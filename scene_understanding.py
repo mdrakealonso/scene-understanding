@@ -1,4 +1,5 @@
 import json
+import math
 import pprint
 
 class SceneUnderstander:
@@ -12,14 +13,43 @@ class SceneUnderstander:
                 for vert in data["vertex-data"]: # iterate over vertices
                     self.file_info[vert['id']] = {"coords": vert['coords'], 
                                                "kind_list": vert['kind-list']} # nested dictionary
-                pprint.pprint(self.file_info)
         except FileNotFoundError:
             print("Error: The file '", file_name, "' was not found.")
         except Exception as e:
             print("An error occured: ", e)
 
+    def get_vector(self, vert1, vert2):
+        vert1_x = vert1[0]
+        vert1_y = vert1[1]
+        vert2_x = vert2[0]
+        vert2_y = vert2[1]
+        vector = (vert2_x - vert1_x, vert2_y - vert1_y) # the vector from vert1 to vert2
+        return vector
+
     def calculate_angle(self, vert):
-        pass
+        vertex = self.file_info[vert]["coords"] # coordinates of central vertex
+        kind_list = self.file_info[vert]["kind_list"]
+
+        neighbors = []
+        for i in range(len(kind_list)):
+            if isinstance(kind_list[i], str):
+                neighbors.append(kind_list[i]) # list neighboring vertices
+
+        angles = []
+        for i in range(len(neighbors)): # loop through each neighbor
+            next_index = (i + 1) % len(neighbors)
+            first_neighbor_verts = self.file_info[neighbors[i]]["coords"] 
+            second_neighbor_verts = self.file_info[neighbors[next_index]]["coords"] 
+            vector1 = self.get_vector(vertex, first_neighbor_verts) # vecor from central vertex to first neighbor
+            vector2 = self.get_vector(vertex, second_neighbor_verts) # vecor from central vertex to second neighbor
+            v1_x, v1_y = vector1 # seperate vector x and y
+            v2_x, v2_y = vector2
+            cosine = v1_x * v2_x + v1_y * v2_y
+            sine = v1_x * v2_y - v1_y * v2_x
+            angle = math.degrees(math.atan2(sine, cosine)) # angle from vector1 to vector2 in degrees
+            print("The angle from ", neighbors[i], " to ", neighbors[next_index], " is ", angle)
+            angles.append(angle)
+        self.file_info[vert]['angles'] = angles
 
     def calculate_type(self, vert):
         pass
@@ -32,7 +62,8 @@ class SceneUnderstander:
 def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
-    scene_understander.analyze_vertices()
+    scene_understander.calculate_angle("A")
+    #scene_understander.analyze_vertices()
 
 if __name__ == "__main__":
     main()
