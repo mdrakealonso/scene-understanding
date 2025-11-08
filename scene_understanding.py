@@ -32,7 +32,7 @@ class SceneUnderstander:
 def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
-    scene_understander.calculate_type()
+    scene_understander.analyze_vertices()
 
 if __name__ == "__main__":
     main()
