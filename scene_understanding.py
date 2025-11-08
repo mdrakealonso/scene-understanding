@@ -18,12 +18,21 @@ class SceneUnderstander:
         except Exception as e:
             print("An error occured: ", e)
 
-    def analyze_vertices(self):
+    def calculate_angle(self, vert):
         pass
+
+    def calculate_type(self, vert):
+        pass
+
+    def analyze_vertices(self):
+        for vert in self.file_info:
+            self.calculate_angle(vert)
+            self.calculate_type(vert)
 
 def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
+    scene_understander.calculate_type()
 
 if __name__ == "__main__":
     main()
