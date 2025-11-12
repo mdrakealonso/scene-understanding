@@ -47,22 +47,40 @@ class SceneUnderstander:
             cosine = v1_x * v2_x + v1_y * v2_y
             sine = v1_x * v2_y - v1_y * v2_x
             angle = math.degrees(math.atan2(sine, cosine)) # angle from vector1 to vector2 in degrees
-            print("The angle from ", neighbors[i], " to ", neighbors[next_index], " is ", angle)
+            print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
             angles.append(angle)
         self.file_info[vert]['angles'] = angles
 
-    def calculate_type(self, vert):
-        pass
+    def calculate_angle_type(self, vert):
+        kind_list = self.file_info[vert]["kind_list"]
+        print(kind_list)
+        angle = self.calculate_angle(vert)
+        angle_type = ""
+
+        neighbors = []
+        for i in range(len(kind_list)):
+            if isinstance(kind_list[i], str):
+                if kind_list[i] not in neighbors:
+                    neighbors.append(kind_list[i]) # list neighboring vertices
+        if len(neighbors) == 2:
+            angle_type = 'L'
+        elif len(neighbors) == 3:
+            if angle < 180:
+                angle_type = "fork"
+            else:
+                angle_type = 'arrow'
+        print("The angle", vert, "is of type", angle_type + ".")
 
     def analyze_vertices(self):
         for vert in self.file_info:
             self.calculate_angle(vert)
-            self.calculate_type(vert)
+            self.calculate_angle_type(vert)
 
 def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
     scene_understander.calculate_angle("A")
+    scene_understander.calculate_angle_type("A")
     #scene_understander.analyze_vertices()
 
 if __name__ == "__main__":
