@@ -25,6 +25,9 @@ class SceneUnderstander:
         vert2_y = vert2[1]
         vector = (vert2_x - vert1_x, vert2_y - vert1_y) # the vector from vert1 to vert2
         return vector
+    
+    def normalize_angle(self, angle_deg):
+        return angle_deg % 360
 
     def calculate_angle(self, vert):
         vertex = self.file_info[vert]["coords"] # coordinates of central vertex
@@ -47,14 +50,15 @@ class SceneUnderstander:
             cosine = v1_x * v2_x + v1_y * v2_y
             sine = v1_x * v2_y - v1_y * v2_x
             angle = math.degrees(math.atan2(sine, cosine)) # angle from vector1 to vector2 in degrees
-            print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
+            angle = self.normalize_angle(angle)
             angles.append(angle)
+            print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
         self.file_info[vert]['angles'] = angles
+        return angles
 
     def calculate_angle_type(self, vert):
         kind_list = self.file_info[vert]["kind_list"]
-        print(kind_list)
-        angle = self.calculate_angle(vert)
+        angles = self.calculate_angle(vert)
         angle_type = ""
 
         neighbors = []
@@ -65,23 +69,22 @@ class SceneUnderstander:
         if len(neighbors) == 2:
             angle_type = 'L'
         elif len(neighbors) == 3:
-            if angle < 180:
-                angle_type = "fork"
+            if any(175 < angle < 185 for angle in angles):
+                angle_type = "T"
+            elif any(angle > 180 for angle in angles):
+                angle_type = "arrow"
             else:
-                angle_type = 'arrow'
+                angle_type = 'fork'
         print("The angle", vert, "is of type", angle_type + ".")
 
     def analyze_vertices(self):
         for vert in self.file_info:
-            self.calculate_angle(vert)
             self.calculate_angle_type(vert)
 
 def main():
     scene_understander = SceneUnderstander()
-    scene_understander.load_file("cube.json")
-    scene_understander.calculate_angle("A")
-    scene_understander.calculate_angle_type("A")
-    #scene_understander.analyze_vertices()
+    scene_understander.load_file("one.json")
+    scene_understander.analyze_vertices()
 
 if __name__ == "__main__":
     main()
