@@ -53,8 +53,22 @@ class SceneUnderstander:
             angle = self.normalize_angle(angle)
             angles.append(angle)
             print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
-        self.file_info[vert]['angles'] = angles
+        self.file_info[vert]['angle_measures'] = angles
         return angles
+    
+    def largestAngle(self, angles):
+        max = angles[0]
+        for angle in angles:
+            if angle > max:
+                max = angle
+        return max
+    
+    def smallestAngle(self, angles):
+        min = angles[0]
+        for angle in angles:
+            if angle < min:
+                min = angle
+        return min
 
     def calculate_angle_type(self, vert):
         kind_list = self.file_info[vert]["kind_list"]
@@ -71,15 +85,40 @@ class SceneUnderstander:
         elif len(neighbors) == 3:
             if any(175 < angle < 185 for angle in angles):
                 angle_type = "T"
-            elif any(angle > 180 for angle in angles):
+            elif any(angle > 185 for angle in angles):
                 angle_type = "arrow"
             else:
                 angle_type = 'fork'
         print("The angle", vert, "is of type", angle_type + ".")
+        self.file_info[vert]['angle_type'] = angle_type
 
     def analyze_vertices(self):
         for vert in self.file_info:
             self.calculate_angle_type(vert)
+
+    def region_linking(self):
+        links = set()
+        for vert,data in self.file_info.items():
+            angle_type = self.file_info[vert]['angle_type']
+            kind_list = data['kind_list']
+            regions = [str(r) for r in kind_list if isinstance(r, (int))]
+            if angle_type.lower() == "fork":
+                for i in range(len(regions)):
+                    for j in range(i+1,len(regions)):
+                        links.add(tuple(sorted((regions[i],regions[j]))))
+                        #three links should be generated between each pair of regions
+                        print("Linked Regions:", sorted([regions[i], regions[j]]), "at FORK vertex", vert)
+            elif angle_type.lower() == "arrow":
+                #one link between two regions of smaller angle
+                angles = data['angle_measures']
+                min = angles.index(self.smallestAngle(angles))
+                r1 = regions[min]
+                r2 = regions[(min+1)%len(regions)]
+                links.add((r1,r2))
+                print("Linked Regions:", sorted([r1, r2]), "at ARROW vertex", vert)
+            elif angle_type.lower() == "l" or angle_type.lower() == "t":
+                continue
+        return links
 
     def join_global(self):
         pass
@@ -102,6 +141,8 @@ def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
+    links = scene_understander.region_linking()
+    print(links)
 
 if __name__ == "__main__":
     main()
