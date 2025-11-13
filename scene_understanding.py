@@ -107,7 +107,7 @@ class SceneUnderstander:
                     for j in range(i+1,len(regions)):
                         links.add(tuple(sorted((regions[i],regions[j]))))
                         #three links should be generated between each pair of regions
-                        print("Linked Regions:", regions[i], regions[j], "at FORK vertex", vert)
+                        print("Linked Regions:", sorted([regions[i], regions[j]]), "at FORK vertex", vert)
             elif angle_type.lower() == "arrow":
                 #one link between two regions of smaller angle
                 angles = data['angle_measures']
@@ -115,7 +115,7 @@ class SceneUnderstander:
                 r1 = regions[min]
                 r2 = regions[(min+1)%len(regions)]
                 links.add((r1,r2))
-                print("Linked Regions:", r1, r2, "at ARROW vertex", vert)
+                print("Linked Regions:", sorted([r1, r2]), "at ARROW vertex", vert)
             elif angle_type.lower() == "l" or angle_type.lower() == "t":
                 continue
         return links
