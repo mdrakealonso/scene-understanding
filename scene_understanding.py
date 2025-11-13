@@ -35,7 +35,7 @@ class SceneUnderstander:
 
         neighbors = []
         for i in range(len(kind_list)):
-            if isinstance(kind_list[i], str):
+            if isinstance(kind_list[i], str) and kind_list[i] not in neighbors:
                 neighbors.append(kind_list[i]) # list neighboring vertices
 
         angles = []
