@@ -81,9 +81,26 @@ class SceneUnderstander:
         for vert in self.file_info:
             self.calculate_angle_type(vert)
 
+    def join_global(self):
+        pass
+        #delete background links
+        #create initial nuclei (containing region + links)
+        #merge nuclei with links between them
+        #repeat until can't merge anymore
+    
+    def join_singlebody(self):
+        pass
+        # find any nucleus containing a single region which has a single link 
+        #                           to another nucleus and no other links
+        # once found, join the two nuclei
+        # whenever a join occurs, print a logging message to indicate 
+        #        that two nuclei were merged and which regions were involved
+        # let the nuclei grow and merge under these rules until 
+        #                           no new nuclei can be formed
+
 def main():
     scene_understander = SceneUnderstander()
-    scene_understander.load_file("one.json")
+    scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
 
 if __name__ == "__main__":
