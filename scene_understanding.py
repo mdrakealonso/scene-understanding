@@ -132,10 +132,8 @@ class SceneUnderstander:
                 print(f"ARROW at {angle}: LINK {sorted((regions[0], regions[1]))}")
         print(links)
         return links
-            
-
-
-    def region_linking(self):
+      
+    def region_linking(self, background=None):
         links = set()
 
         for v in self.file_info:
@@ -164,22 +162,99 @@ class SceneUnderstander:
                 continue
         return links
 
-    def join_global(self):
-        pass
-        #delete background links
-        #create initial nuclei (containing region + links)
-        #merge nuclei with links between them
-        #repeat until can't merge anymore
+    def detect_background(self, file_name):
+        with open(file_name, "r") as f:
+            data = json.load(f)
+            if "background" in data:
+                background = str(data["background"])
+                print(f"[INFO] Using background from file: {background}")
+                return background
     
-    def join_singlebody(self):
-        pass
-        # find any nucleus containing a single region which has a single link 
-        #                           to another nucleus and no other links
-        # once found, join the two nuclei
-        # whenever a join occurs, print a logging message to indicate 
-        #        that two nuclei were merged and which regions were involved
-        # let the nuclei grow and merge under these rules until 
-        #                           no new nuclei can be formed
+    def dfs(self, region, current_nucleus, visited, graph): #recursivley find connected regions
+        visited.add(region)
+        current_nucleus.add(region)
+        for neighbor in graph.get(region, []):
+            if neighbor not in visited:
+                self.dfs(neighbor, current_nucleus, visited, graph)
+    
+    def global_grouping(self, links, background=None): #connects regions into nuclei based on links Links {(1,2), (2,3), (4,5)} → nuclei = [['1','2','3'], ['4','5']]
+        # Remove links to background
+        if background:
+            filtered_links = {l for l in links if background not in l}
+        else:
+            filtered_links = links
+        print(":GLOBAL: Filtered links (no background):", filtered_links)
+        graph = {} #graph where each regions points to all linked neighbors
+        for r1, r2 in filtered_links:
+            graph.setdefault(r1, set()).add(r2)
+            graph.setdefault(r2, set()).add(r1)
+        #find connected components (each is a nucleus)
+        visited = set()
+        nuclei = []
+        def dfs(region, nucleus):
+            visited.add(region)
+            nucleus.add(region)
+            for neighbor in graph.get(region, []):
+                if neighbor not in visited:
+                    dfs(neighbor, nucleus)
+        for region in graph: #for each region if not visited do dfs to find all connected regions
+            if region not in visited:
+                nucleus = set()
+                dfs(region, nucleus)
+                nuclei.append(nucleus)
+                print(f"[GLOBAL MERGE] Formed nucleus {nucleus}")
+
+        return nuclei #return list of nuclei (each nucleus is a list of regions)
+
+    def single_body_gen(self, links, nuclei):
+        adj = {}
+        for a, b in links:
+            adj.setdefault(a, set()).add(b)
+            adj.setdefault(b, set()).add(a)
+
+        #map each region to its nucleus index
+        def region_to_nucleus_map(nuclei):
+            mapping = {}
+            for i, n in enumerate(nuclei):
+                for r in n:
+                    mapping[r] = i
+            return mapping
+        changed = True
+        while changed:
+            changed = False
+            region_to_nucleus = region_to_nucleus_map(nuclei)
+
+            for i, n in enumerate(list(nuclei)):
+                # only single-region nuclei are eligible
+                if len(n) != 1:
+                    continue
+                region = next(iter(n))
+                linked = adj.get(region, set())
+                if len(linked) == 1:  # only one link
+                    neighbor = next(iter(linked))
+                    neighbor_idx = region_to_nucleus.get(neighbor)
+                    if neighbor_idx is not None and neighbor_idx != i:
+                        # merge single region nucleus into neighbor nucleus
+                        print(f"[SINGLEBODY MERGE] Joining {n} with {nuclei[neighbor_idx]}")
+                        nuclei[neighbor_idx].update(n)
+                        nuclei.remove(n)
+                        changed = True
+                        break
+        return nuclei
+
+    
+    def body_gen(self, file_name):
+        background = self.detect_background(file_name)
+        print(f"\nDetected background region: {background}")
+        links = self.region_linking(background=background)
+        nuclei = self.global_grouping(links, background)
+        nuclei = self.single_body_gen(links, nuclei)
+
+        print("Bodies formed from all linked regions:", nuclei)
+        for i, body in enumerate(nuclei, 1):
+            formatted = " ".join(f":{r}" for r in sorted(body, key=int))
+            print(f"(BODY {i}. IS {formatted})")
+        return nuclei
 
     def print_table(self):
         table = PrettyTable()
@@ -199,6 +274,9 @@ def main():
     links = scene_understander.link_regions()
     scene_understander.link_regions()
     scene_understander.print_table()
+
+    nuclei = scene_understander.body_gen("cube.json")  
+    scene_understander.single_body_gen(links, nuclei)
 
 if __name__ == "__main__":
     main()
