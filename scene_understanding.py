@@ -1,6 +1,6 @@
 import json
 import math
-import pprint
+from prettytable import PrettyTable
 
 class SceneUnderstander:
     def __init__(self):
@@ -86,9 +86,9 @@ class SceneUnderstander:
             if any(175 < angle < 185 for angle in angles):
                 angle_type = "T"
             elif any(angle > 185 for angle in angles):
-                angle_type = "arrow"
+                angle_type = "ARROW"
             else:
-                angle_type = 'fork'
+                angle_type = 'FORK'
         print("The angle", vert, "is of type", angle_type + ".")
         self.file_info[vert]['angle_type'] = angle_type
 
@@ -96,26 +96,70 @@ class SceneUnderstander:
         for vert in self.file_info:
             self.calculate_angle_type(vert)
 
+    def link_regions(self):
+        links = set()
+
+        for v in self.file_info:
+            self.file_info[v]['links'] = set()
+
+        for angle in self.file_info:
+            angle_type = self.file_info[angle]['angle_type']
+            kind_list = self.file_info[angle]['kind_list']
+            regions = [region for region in kind_list if isinstance(region, int)]
+            print("regions:", regions)
+            if angle_type.lower() == "L" or angle_type.lower() == "T":
+                continue
+            elif angle_type.lower() == "fork":
+                for i in range(len(regions)):
+                    for j in range(i+1, len(regions)):
+                        link = tuple(sorted((regions[i], regions[j])))
+                        links.add(link)
+                        self.file_info[angle]['links'].add(link)
+                        print(f"FORK at {angle}: LINK {sorted((regions[i], regions[j]))}")
+            elif angle_type.lower() == "arrow":
+                angles = self.file_info[angle]['angle_measures']
+                region_pairs = []
+                for i in range(len(regions)):
+                    next = (i + 1) % len(regions)
+                    region_pairs.append((regions[i], regions[next]))
+                
+                min_index = angles.index(min(angles))
+                smallest_pair = region_pairs[min_index]
+
+                link = tuple(sorted(smallest_pair))
+                links.add(link)
+                self.file_info[angle]['links'].add(link)
+                print(f"ARROW at {angle}: LINK {sorted((regions[0], regions[1]))}")
+        print(links)
+        return links
+            
+
+
     def region_linking(self):
         links = set()
+
+        for v in self.file_info:
+            self.file_info[v]['links'] = set()
+
         for vert,data in self.file_info.items():
             angle_type = self.file_info[vert]['angle_type']
             kind_list = data['kind_list']
             regions = [str(r) for r in kind_list if isinstance(r, (int))]
             if angle_type.lower() == "fork":
                 for i in range(len(regions)):
-                    for j in range(i+1,len(regions)):
-                        links.add(tuple(sorted((regions[i],regions[j]))))
-                        #three links should be generated between each pair of regions
-                        print("Linked Regions:", sorted([regions[i], regions[j]]), "at FORK vertex", vert)
+                    for j in range(i + 1, len(regions)):
+                        link = tuple(sorted((regions[i], regions[j])))
+                        links.add(link)
+                        self.file_info[vert]['links'].add(link)
+                        print(f"[LINK] FORK at {vert}: link {sorted((regions[i], regions[j]))}")
             elif angle_type.lower() == "arrow":
                 #one link between two regions of smaller angle
                 angles = data['angle_measures']
-                min = angles.index(self.smallestAngle(angles))
-                r1 = regions[min]
-                r2 = regions[(min+1)%len(regions)]
-                links.add((r1,r2))
-                print("Linked Regions:", sorted([r1, r2]), "at ARROW vertex", vert)
+                if len(angles) >= 2:
+                    link = tuple(sorted((regions[0], regions[1])))
+                    links.add(link)
+                    self.file_info[vert]['links'].add(link)
+                    print(f"[LINK] ARROW at {vert}: link {sorted((regions[0], regions[1]))}")
             elif angle_type.lower() == "l" or angle_type.lower() == "t":
                 continue
         return links
@@ -137,12 +181,24 @@ class SceneUnderstander:
         # let the nuclei grow and merge under these rules until 
         #                           no new nuclei can be formed
 
+    def print_table(self):
+        table = PrettyTable()
+        table.field_names = ["Vertex ID", "Vertex Type", "Links Generated"]
+        for item in self.file_info:
+            angle_type = self.file_info[item].get("angle_type", "")
+            generated_links = self.file_info[item].get('links', "")
+            if not generated_links:
+                generated_links = ""
+            table.add_rows([[item, angle_type, generated_links]])
+        print(table)
+
 def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
-    links = scene_understander.region_linking()
-    print(links)
+    links = scene_understander.link_regions()
+    scene_understander.link_regions()
+    scene_understander.print_table()
 
 if __name__ == "__main__":
     main()
