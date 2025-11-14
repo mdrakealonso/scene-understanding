@@ -30,12 +30,6 @@ class SceneUnderstander:
         vector = (vert2_x - vert1_x, vert2_y - vert1_y) # the vector from vert1 to vert2
         return vector
 
-    def normalize_angle(self, angle):
-        angle = angle % 360
-        if angle > 180:
-            angle = 360 - angle
-        return angle
-
     def calculate_angle(self, vert):
         vertex = self.file_info[vert]["coords"] # coordinates of central vertex
         kind_list = self.file_info[vert]["kind_list"]
@@ -57,7 +51,8 @@ class SceneUnderstander:
             cosine = v1_x * v2_x + v1_y * v2_y
             sine = v1_x * v2_y - v1_y * v2_x
             angle = math.degrees(math.atan2(sine, cosine)) # angle from vector1 to vector2 in degrees
-            angle = self.normalize_angle(angle)
+            if angle < 0:
+                angle += 360
             angles.append(angle)
             print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
         self.file_info[vert]['angle_measures'] = angles
@@ -250,9 +245,9 @@ class SceneUnderstander:
 
 def main():
     scene_understander = SceneUnderstander()
-    scene_understander.load_file("one.json")
+    scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
-    scene_understander.body_gen("one.json")  
+    scene_understander.body_gen("cube.json")  
     #print(scene_understander.file_info)
     scene_understander.print_table()
 
