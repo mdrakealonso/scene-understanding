@@ -14,65 +14,78 @@ class SceneUnderstander:
                     self.file_info[vert['id']] = {"coords": vert['coords'], 
                                                "kind_list": vert['kind-list']} # nested dictionary
         except FileNotFoundError:
-            print("Error: The file '", file_name, "' was not found.")
+            print(f"Error: The file '{file_name}' was not found.")
         except Exception as e:
-            print("An error occured: ", e)
+            print("An error occured:", e)
 
     def get_vector(self, vert1, vert2):
-        vert1_x = vert1[0]
-        vert1_y = vert1[1]
-        vert2_x = vert2[0]
-        vert2_y = vert2[1]
-        vector = (vert2_x - vert1_x, vert2_y - vert1_y) # the vector from vert1 to vert2
-        return vector
+        return (vert2[0] - vert1[0], vert2[1] - vert1[1])
     
-    def normalize_angle(self, angle_deg):
-        return angle_deg % 360
-
     def calculate_angle(self, vert):
         vertex = self.file_info[vert]["coords"] # coordinates of central vertex
         kind_list = self.file_info[vert]["kind_list"]
 
+        neighbor_ids = []
+        for item in kind_list:
+            if isinstance(item, str) and item not in neighbor_ids:
+                neighbor_ids.append(item) # list neighboring vertices
+
         neighbors = []
-        for i in range(len(kind_list)):
-            if isinstance(kind_list[i], str) and kind_list[i] not in neighbors:
-                neighbors.append(kind_list[i]) # list neighboring vertices
+        for id in neighbor_ids:
+            neighbor_coords = self.file_info[id]["coords"]
+            neighbor_x, neighbor_y = neighbor_coords
+            central_x, central_y = vertex
+            dx = neighbor_x - central_x
+            dy = neighbor_y - central_y
+            dir = math.degrees(math.atan2(dy, dx))
+            dir = dir % 360
+            neighbors.append((id, neighbor_coords, dir))
+
+        neighbors_sorted = sorted(neighbors, key=lambda x: x[2])
 
         angles = []
-        for i in range(len(neighbors)): # loop through each neighbor
-            next_index = (i + 1) % len(neighbors)
-            first_neighbor_verts = self.file_info[neighbors[i]]["coords"] 
-            second_neighbor_verts = self.file_info[neighbors[next_index]]["coords"] 
-            vector1 = self.get_vector(vertex, first_neighbor_verts) # vecor from central vertex to first neighbor
-            vector2 = self.get_vector(vertex, second_neighbor_verts) # vecor from central vertex to second neighbor
+        for i in range(len(neighbors_sorted)): # loop through each neighbor
+            next_index = (i + 1) % len(neighbors_sorted)
+
+            first_neighbor_coords = neighbors_sorted[i][1]
+            second_neighbor_coords = neighbors_sorted[next_index][1]
+
+            vector1 = self.get_vector(vertex, first_neighbor_coords) # vecor from central vertex to first neighbor
+            vector2 = self.get_vector(vertex, second_neighbor_coords) # vecor from central vertex to second neighbor
+
             v1_x, v1_y = vector1 # seperate vector x and y
             v2_x, v2_y = vector2
+
             cosine = v1_x * v2_x + v1_y * v2_y
             sine = v1_x * v2_y - v1_y * v2_x
-            angle = math.degrees(math.atan2(sine, cosine)) # angle from vector1 to vector2 in degrees
-            angle = self.normalize_angle(angle)
+            angle = math.degrees(math.atan2(sine, cosine)) % 360 # angle from vector1 to vector2 in degrees
             angles.append(angle)
-            print("The angle from ", neighbors[i], " to ", vert, " to ", neighbors[next_index], " is ", angle)
+
+            print("The angle from ", neighbors_sorted[i][0], " to ", vert, " to ", neighbors_sorted[next_index][0], " is ", angle)
+        self.file_info[vert]['neighbors_sorted'] = [n[0] for n in neighbors_sorted]
         self.file_info[vert]['angle_measures'] = angles
         return angles
     
+    
     def largestAngle(self, angles):
-        max = angles[0]
+        max_angle = angles[0]
         for angle in angles:
-            if angle > max:
-                max = angle
-        return max
+            if angle > max_angle:
+                max_angle = angle
+        return max_angle
     
     def smallestAngle(self, angles):
-        min = angles[0]
+        min_angle = angles[0]
         for angle in angles:
-            if angle < min:
-                min = angle
-        return min
+            if angle < min_angle:
+                min_angle = angle
+        return min_angle
 
     def calculate_angle_type(self, vert):
         kind_list = self.file_info[vert]["kind_list"]
-        angles = self.calculate_angle(vert)
+        angles = self.file_info[vert].get("angle_measures")
+        if angles is None:
+            angles = self.calculate_angle(vert)
         angle_type = ""
 
         neighbors = []
@@ -96,70 +109,49 @@ class SceneUnderstander:
         for vert in self.file_info:
             self.calculate_angle_type(vert)
 
-    def link_regions(self):
-        links = set()
-
-        for v in self.file_info:
-            self.file_info[v]['links'] = set()
-
-        for angle in self.file_info:
-            angle_type = self.file_info[angle]['angle_type']
-            kind_list = self.file_info[angle]['kind_list']
-            regions = [region for region in kind_list if isinstance(region, int)]
-            print("regions:", regions)
-            if angle_type.lower() == "L" or angle_type.lower() == "T":
-                continue
-            elif angle_type.lower() == "fork":
-                for i in range(len(regions)):
-                    for j in range(i+1, len(regions)):
-                        link = tuple(sorted((regions[i], regions[j])))
-                        links.add(link)
-                        self.file_info[angle]['links'].add(link)
-                        print(f"FORK at {angle}: LINK {sorted((regions[i], regions[j]))}")
-            elif angle_type.lower() == "arrow":
-                angles = self.file_info[angle]['angle_measures']
-                region_pairs = []
-                for i in range(len(regions)):
-                    next = (i + 1) % len(regions)
-                    region_pairs.append((regions[i], regions[next]))
-                
-                min_index = angles.index(min(angles))
-                smallest_pair = region_pairs[min_index]
-
-                link = tuple(sorted(smallest_pair))
-                links.add(link)
-                self.file_info[angle]['links'].add(link)
-                print(f"ARROW at {angle}: LINK {sorted((regions[0], regions[1]))}")
-        print(links)
-        return links
-      
     def region_linking(self, background=None):
         links = set()
 
-        for v in self.file_info:
-            self.file_info[v]['links'] = set()
+        for vert, data in self.file_info.items():
+            data['links'] = set()
+            angle_type = data['angle_type']
+            regions = [r for r in data['kind_list'] if isinstance(r, int)]
 
-        for vert,data in self.file_info.items():
-            angle_type = self.file_info[vert]['angle_type']
-            kind_list = data['kind_list']
-            regions = [str(r) for r in kind_list if isinstance(r, (int))]
             if angle_type.lower() == "fork":
                 for i in range(len(regions)):
                     for j in range(i + 1, len(regions)):
                         link = tuple(sorted((regions[i], regions[j])))
                         links.add(link)
-                        self.file_info[vert]['links'].add(link)
-                        print(f"[LINK] FORK at {vert}: link {sorted((regions[i], regions[j]))}")
+                        data['links'].add(link)
+                        print(f"[LINK] FORK at {vert}: {link}")
+
             elif angle_type.lower() == "arrow":
-                #one link between two regions of smaller angle
+                neighbor_ids = data['neighbors_sorted']
                 angles = data['angle_measures']
-                if len(angles) >= 2:
-                    link = tuple(sorted((regions[0], regions[1])))
+                min_idx = angles.index(min(angles))  # smallest angle
+
+                # neighbors forming the smallest angle
+                n1_id = neighbor_ids[min_idx]
+                n2_id = neighbor_ids[(min_idx + 1) % len(neighbor_ids)]
+
+                # central vertex regions
+                vertex_regions = set(r for r in data['kind_list'] if isinstance(r, int))
+
+                # neighbor regions
+                n1_regions = set(r for r in self.file_info[n1_id]['kind_list'] if isinstance(r, int))
+                n2_regions = set(r for r in self.file_info[n2_id]['kind_list'] if isinstance(r, int))
+
+                # link regions
+                arrow_regions = list(vertex_regions & (n1_regions | n2_regions))
+                if len(arrow_regions) >= 2:
+                    link = tuple(sorted(arrow_regions[:2]))
                     links.add(link)
-                    self.file_info[vert]['links'].add(link)
-                    print(f"[LINK] ARROW at {vert}: link {sorted((regions[0], regions[1]))}")
-            elif angle_type.lower() == "l" or angle_type.lower() == "t":
+                    data['links'].add(link)
+                    print(f"[LINK] ARROW at {vert}: {link}")
+                    
+            elif angle_type.lower() in ("l", "t"):
                 continue
+
         return links
 
     def detect_background(self, file_name):
@@ -169,13 +161,6 @@ class SceneUnderstander:
                 background = str(data["background"])
                 print(f"[INFO] Using background from file: {background}")
                 return background
-    
-    def dfs(self, region, current_nucleus, visited, graph): #recursivley find connected regions
-        visited.add(region)
-        current_nucleus.add(region)
-        for neighbor in graph.get(region, []):
-            if neighbor not in visited:
-                self.dfs(neighbor, current_nucleus, visited, graph)
     
     def global_grouping(self, links, background=None): #connects regions into nuclei based on links Links {(1,2), (2,3), (4,5)} → nuclei = [['1','2','3'], ['4','5']]
         # Remove links to background
@@ -271,8 +256,7 @@ def main():
     scene_understander = SceneUnderstander()
     scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
-    links = scene_understander.link_regions()
-    scene_understander.link_regions()
+    links = scene_understander.region_linking()
     scene_understander.print_table()
 
     nuclei = scene_understander.body_gen("cube.json")  
