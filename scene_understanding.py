@@ -148,7 +148,7 @@ class SceneUnderstander:
                     links.add(link)
                     data['links'].add(link)
                     print(f"[LINK] ARROW at {vert}: {link}")
-                    
+
             elif angle_type.lower() in ("l", "t"):
                 continue
 
@@ -248,7 +248,7 @@ class SceneUnderstander:
             angle_type = self.file_info[item].get("angle_type", "")
             generated_links = self.file_info[item].get('links', "")
             if not generated_links:
-                generated_links = ""
+                generated_links = ("No links generated.")
             table.add_rows([[item, angle_type, generated_links]])
         print(table)
 
@@ -257,10 +257,9 @@ def main():
     scene_understander.load_file("cube.json")
     scene_understander.analyze_vertices()
     links = scene_understander.region_linking()
-    scene_understander.print_table()
-
     nuclei = scene_understander.body_gen("cube.json")  
     scene_understander.single_body_gen(links, nuclei)
+    scene_understander.print_table()
 
 if __name__ == "__main__":
     main()
