@@ -34,16 +34,6 @@ class SceneUnderstander:
             self.angles = []  # store calculated angles
             self.neigboring_vertices = []  # connected vertices
         
-        def get_neighbors(self):
-            neighbors = []
-            for i in range(len(self.kind_list)): #for each item in the kind list
-                item = self.kind_list[i]
-                if isinstance(item, str): #check if its a vertex(str)
-                    neighbors.append(item)
-            if neighbors and len(neighbors) > 1 and neighbors[0] == neighbors[-1]: #remove last element
-                neighbors.pop()
-            return neighbors
-        
         def get_vector(self, v_coords,needs_flip):
             x = v_coords[0] - self.coords[0]
             y = (v_coords[1] - self.coords[1])
@@ -71,7 +61,7 @@ class SceneUnderstander:
                 neighbors = neighbors[:-1]
             neighbor_count = len(neighbors)
             print("-----CLASSIFYING VERTEX TYPE of Vertex" ,self.id,"-----")
-            if neighbor_count == 2:
+            if neighbor_count == 2: ##if only 2 edges
                 self.vertex_type = "L"
                 v1 = neighbors[0]
                 v2 = neighbors[1]
@@ -89,7 +79,7 @@ class SceneUnderstander:
                     v2 = neighbors[(i + 1) % 3]
                     v1_coords = vertices_dict[v1].coords
                     v2_coords = vertices_dict[v2].coords
-                    angle = self.calculate_angle(v1_coords, v2_coords, needs_flip)
+                    angle = self.calculate_angle(v1_coords, v2_coords, needs_flip) 
                     angles.append(angle)
                     print(f"  Angle from {v1} to {v2}: {angle:.2f}")
                 self.angles = angles
@@ -137,10 +127,13 @@ class SceneUnderstander:
             self.vertices[vid] = self.Vertex(vid, tuple(info["coords"]), info["kind_list"])
     
     def analyze_vertices(self,needs_flip):
-        for v in self.vertices.values():
+        for v in self.vertices.values(): #calculate vertex types
             v.calculate_vertex_type(self.vertices, needs_flip)
         self.all_links = []
-        for v in self.vertices.values():
+        print("\n" + "="*50)
+        print("REGION LINKING")
+        print("="*50)
+        for v in self.vertices.values(): #region linking
             self.all_links.extend(v.region_linking(self.background))
         print(f"All links (with duplicates): {self.all_links}")
 
